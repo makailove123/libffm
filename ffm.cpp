@@ -14,6 +14,7 @@ i: Data point index (0 to l-1)
 nnz: Number of non-zero elements
 X, P: Used to store the problem in a compressed sparse row (CSR) format. len(X) = nnz, len(P) = l + 1
 Y: The label. len(Y) = l
+S: The sample weight. len(S) = l
 R: Precomputed scaling factor to make the 2-norm of each instance to be 1. len(R) = l
 v: Value of each element in the problem
 */
@@ -308,6 +309,7 @@ struct disk_problem_meta {
 struct problem_on_disk {
     disk_problem_meta meta;
     vector<ffm_float> Y;
+    vector<ffm_float> S;
     vector<ffm_float> R;
     vector<ffm_long> P;
     vector<ffm_node> X;
@@ -334,6 +336,9 @@ struct problem_on_disk {
 
         Y.resize(l);
         f.read(reinterpret_cast<char*>(Y.data()), sizeof(ffm_float) * l);
+
+        S.resize(l);
+        f.read(reinterpret_cast<char*>(S.data()), sizeof(ffm_float) * l);
 
         R.resize(l);
         f.read(reinterpret_cast<char*>(R.data()), sizeof(ffm_float) * l);
@@ -405,6 +410,7 @@ void txt2bin(string txt_path, string bin_path) {
     disk_problem_meta meta;
 
     vector<ffm_float> Y;
+    vector<ffm_float> S;
     vector<ffm_float> R;
     vector<ffm_long> P(1, 0);
     vector<ffm_node> X;
@@ -418,11 +424,13 @@ void txt2bin(string txt_path, string bin_path) {
 
         f_bin.write(reinterpret_cast<char*>(&l), sizeof(ffm_int));
         f_bin.write(reinterpret_cast<char*>(Y.data()), sizeof(ffm_float) * l);
+        f_bin.write(reinterpret_cast<char*>(S.data()), sizeof(ffm_float) * l);
         f_bin.write(reinterpret_cast<char*>(R.data()), sizeof(ffm_float) * l);
         f_bin.write(reinterpret_cast<char*>(P.data()), sizeof(ffm_long) * (l+1));
         f_bin.write(reinterpret_cast<char*>(X.data()), sizeof(ffm_node) * nnz);
 
         Y.clear();
+        S.clear();
         R.clear();
         P.assign(1, 0);
         X.clear();
@@ -434,8 +442,16 @@ void txt2bin(string txt_path, string bin_path) {
 
     while(fgets(line.data(), kMaxLineSize, f_txt)) {
         char *y_char = strtok(line.data(), " \t");
+        char *wei_char = NULL;
 
+        for (int i = 0; i < (int)strlen(y_char); i ++) {
+            if (y_char[i] == ':') {
+                y_char[i] = '\0';
+                wei_char = y_char + i + 1;
+            }
+        }
         ffm_float y = (atoi(y_char)>0)? 1.0f : -1.0f;
+        ffm_float wei = (wei_char != NULL)? atof(wei_char) : 1.0;
 
         ffm_float scale = 0;
         for(; ; p++) {
@@ -460,6 +476,7 @@ void txt2bin(string txt_path, string bin_path) {
         scale = 1.0 / scale;
 
         Y.push_back(y);
+        S.push_back(wei);
         R.push_back(scale);
         P.push_back(p);
 
@@ -580,6 +597,8 @@ ffm_model ffm_train_on_disk(string tr_path, string va_path, ffm_parameter param)
                 ffm_int i = inner_order[ii];
 
                 ffm_float y = prob.Y[i];
+
+                ffm_float y_wei = prob.S[i];
                 
                 ffm_node *begin = &prob.X[prob.P[i]];
 
@@ -591,13 +610,13 @@ ffm_model ffm_train_on_disk(string tr_path, string va_path, ffm_parameter param)
 
                 ffm_double expnyt = exp(-y*t);
 
-                loss += log1p(expnyt);
+                loss += log1p(expnyt) * y_wei;
 
                 if(do_update) {
                    
                     ffm_float kappa = -y*expnyt/(1+expnyt);
 
-                    wTx(begin, end, r, model, kappa, param.eta, param.lambda, true);
+                    wTx(begin, end, r, model, kappa * y_wei, param.eta, param.lambda * y_wei, true);
                 }
             }
         }

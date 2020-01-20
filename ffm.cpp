@@ -304,6 +304,7 @@ struct disk_problem_meta {
     ffm_long B_pos = 0;
     uint64_t hash1;
     uint64_t hash2;
+    ffm_float total_weight = 0;
 };
 
 struct problem_on_disk {
@@ -421,6 +422,8 @@ void txt2bin(string txt_path, string bin_path) {
         ffm_int l = Y.size();
         ffm_long nnz = P[l];
         meta.l += l;
+        for (int i = 0; i < (int)S.size(); i ++)
+            meta.total_weight += S[i];
 
         f_bin.write(reinterpret_cast<char*>(&l), sizeof(ffm_int));
         f_bin.write(reinterpret_cast<char*>(Y.data()), sizeof(ffm_float) * l);
@@ -621,7 +624,7 @@ ffm_model ffm_train_on_disk(string tr_path, string va_path, ffm_parameter param)
             }
         }
 
-        return loss / prob.meta.l;
+        return loss / prob.meta.total_weight;
     };
 
     for(ffm_int iter = 1; iter <= param.nr_iters; iter++) {

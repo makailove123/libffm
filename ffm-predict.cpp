@@ -59,6 +59,11 @@ void predict(string test_path, string model_path, string output_path) {
     for(; fgets(line, kMaxLineSize, f_in) != nullptr; i++) {
         x.clear();
         char *y_char = strtok(line, " \t");
+        for (int i = 0; i < (int)strlen(y_char); i ++) {
+            if (y_char[i] == ':') {
+                y_char[i] = '\0';
+            }
+        }
         ffm_float y = (atoi(y_char)>0)? 1.0f : -1.0f;
 
         while(true) {

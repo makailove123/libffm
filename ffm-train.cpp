@@ -132,8 +132,8 @@ Option parse_option(int argc, char **argv) {
 }
 
 int train_on_disk(Option opt) {
-    string tr_bin_path = basename(opt.tr_path) + ".bin";
-    string va_bin_path = opt.va_path.empty()? "" : basename(opt.va_path) + ".bin";
+    string tr_bin_path = opt.tr_path + ".bin";
+    string va_bin_path = opt.va_path.empty()? "" : opt.va_path + ".bin";
 
     ffm_read_problem_to_disk(opt.tr_path, tr_bin_path);
     if(!opt.va_path.empty())

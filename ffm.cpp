@@ -718,4 +718,11 @@ ffm_float ffm_predict(ffm_node *begin, ffm_node *end, ffm_model &model) {
     return 1/(1+exp(-t));
 }
 
+ffm_float *get_w(ffm_int feature_id, ffm_int field_id, ffm_model &model) {
+    ffm_int align0 = 2 * get_k_aligned(model.k);
+    ffm_int align1 = model.m * align0;
+
+    return model.W + (ffm_long)feature_id * align1 + field_id * align0;
+}
+
 } // namespace ffm

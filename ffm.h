@@ -2,6 +2,7 @@
 #define _LIBFFM_H
 
 #include <string>
+#include <vector>
 
 namespace ffm {
 
@@ -46,7 +47,7 @@ ffm_model ffm_train_on_disk(string Tr_path, string Va_path, ffm_parameter param)
 
 ffm_float ffm_predict(ffm_node *begin, ffm_node *end, ffm_model &model);
 
-ffm_float *get_w(ffm_int feature_id, ffm_int field_id, ffm_model &model);
+std::vector<ffm_float> get_w(ffm_int feature_id, ffm_int field_id, ffm_model &model);
 
 } // namespace ffm
 

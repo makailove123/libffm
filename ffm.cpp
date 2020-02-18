@@ -227,8 +227,10 @@ inline ffm_float wTx(
                     w2[d] -= eta / sqrt(wg2[d]) * g2;
                 }
             } else {
-                for(ffm_int d = 0; d < align0; d += kALIGN * 2)
-                    t += w1[d] * w2[d] * v;
+                for(ffm_int d = 0; d < align0; d += kALIGN * 2) {
+                    for (ffm_int a = 0; a < kALIGN; a ++)
+                        t += w1[d + a] * w2[d + a] * v;
+                }
             }
         }
     }
@@ -718,11 +720,18 @@ ffm_float ffm_predict(ffm_node *begin, ffm_node *end, ffm_model &model) {
     return 1/(1+exp(-t));
 }
 
-ffm_float *get_w(ffm_int feature_id, ffm_int field_id, ffm_model &model) {
+std::vector<ffm_float> get_w(ffm_int feature_id, ffm_int field_id, ffm_model &model) {
     ffm_int align0 = 2 * get_k_aligned(model.k);
     ffm_int align1 = model.m * align0;
 
-    return model.W + (ffm_long)feature_id * align1 + field_id * align0;
+    vector<ffm_float> ret(model.k);
+    ffm_float *w = model.W + (ffm_long)feature_id * align1 + field_id * align0;
+    int ri = 0;
+    for (ffm_int d = 0; d < align0; d += kALIGN * 2) {
+        for (ffm_int a = 0; a < kALIGN; a ++)
+            ret[ri++] = w[d + a];
+    }
+    return ret;
 }
 
 } // namespace ffm
